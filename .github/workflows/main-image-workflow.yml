@@ -37,7 +37,11 @@ jobs:
         if: ${{ steps.changes.outputs.skip != 'true' }}
         run: |
           git fetch --tags
-          echo "LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)" >> $GITHUB_ENV
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="sha-$(git rev-parse --short HEAD)"
+          fi
+          echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
 
       # Set up QEMU
       - name: Set up QEMU
