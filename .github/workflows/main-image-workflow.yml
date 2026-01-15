@@ -72,6 +72,8 @@ jobs:
           cp .env.example .env
 
       # Build and push Docker images for each target
+      # ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image_name }}:${{ env.LATEST_TAG }}
+      # ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image_name }}:latest
       - name: Build and push Docker images
         if: ${{ steps.changes.outputs.skip != 'true' }}
         uses: docker/build-push-action@v5
@@ -82,7 +84,5 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/${{ matrix.image_name }}:${{ env.LATEST_TAG }}
             ghcr.io/${{ github.repository_owner }}/${{ matrix.image_name }}:latest
-            # ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image_name }}:${{ env.LATEST_TAG }}
-            # ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image_name }}:latest
           platforms: linux/amd64,linux/arm64
           target: ${{ matrix.target }}
