@@ -1,0 +1,63 @@
+name: Nightly sync from LibreChat upstream
+
+on:
+  schedule:
+    - cron: "15 3 * * *" # nightly 03:15 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.SYNC_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "soluma-sync-bot"
+          git config user.email "soluma-sync-bot@users.noreply.github.com"
+
+      - name: Add upstream and fetch
+        run: |
+          git remote add upstream https://github.com/danny-avila/LibreChat.git || true
+          git fetch upstream main
+          git fetch origin
+
+      # Mirror upstream/main -> libre-stream (intentionally overwrites libre-stream)
+      - name: Update libre-stream to upstream/main
+        run: |
+          git checkout -B libre-stream upstream/main
+          git push origin libre-stream --force-with-lease
+
+      # Create or update a PR from libre-stream -> main
+      - name: Create or update PR
+        id: cpr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.SYNC_TOKEN }}
+          base: main
+          head: libre-stream
+          title: "Sync: LibreChat upstream -> Soluma main"
+          body: |
+            Nightly sync PR.
+            Source: danny-avila/LibreChat (upstream/main)
+            Target: soluma-io/SolumaChat (main)
+          labels: |
+            upstream-sync
+          draft: false
+
+      # Turn on auto-merge for the PR (only merges when mergeable; if conflicts, it won't)
+      - name: Enable auto-merge (squash)
+        if: steps.cpr.outputs.pull-request-number != ''
+        uses: peter-evans/enable-pull-request-automerge@v3
+        with:
+          token: ${{ secrets.SYNC_TOKEN }}
+          pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
+          merge-method: squash
